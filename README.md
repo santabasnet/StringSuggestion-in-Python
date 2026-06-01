@@ -6,24 +6,175 @@ This project demonstrates a fundamental approach to building a word suggestion o
 
 ## Algorithm Overview
 
-The core algorithm operates on the principle of representing words as numerical vectors based on their n-gram frequencies and then calculating the distance (similarity) between these vectors.
+The algorithm is implemented entirely in [suggestion.py](suggestion.py). The `main()` function orchestrates **12 sequential steps**, from reading raw data to printing ranked word suggestions. Each step maps directly to a dedicated function.
 
-1.  **Data Preparation**:
-    *   Reads a corpus of words from `dictionary.txt`.
-    *   Filters out words shorter than a minimum length (3 characters).
-    *   Randomly samples a subset of words (1000 words) for performance, simulating a constrained dictionary.
-2.  **N-Gram Generation**:
-    *   For every word in the dictionary, generates multi-grams of varying sizes (typically 3, 4, and 5-grams). 
-    *   For example, 3-grams of "apple" are `['app', 'ppl', 'ple']`.
-3.  **Vectorization**:
-    *   Builds a frequency map of all unique n-grams across the entire sampled dictionary to determine the vector space dimension.
-    *   Maps each word to a vector where each index represents a specific n-gram, and the value represents its frequency in that word.
-4.  **Similarity Calculation (Cosine Similarity)**:
-    *   When an input word is provided, it's converted into a vector using the same n-gram space.
-    *   The system computes the Cosine Similarity between the input vector and all dictionary word vectors.
-5.  **Ranking**:
-    *   Words are ranked in descending order of their similarity score.
-    *   The top $k$ (default 10) words with scores $> 0$ are returned as suggestions.
+---
+
+### Step 1 — Read All Words from File
+```python
+word_list = read_all_words()
+```
+Opens `dictionary.txt` and reads every line into a Python list. Each line is treated as a single word entry. The file may contain tens of thousands of words.
+
+---
+
+### Step 2 — Sample and Sort 1000 Words
+```python
+sorted_sampled_words = sample_1000_words(word_list)
+```
+- **Filters** out any word shorter than `MINIMUM_LENGTH = 3` characters (e.g., `"a"`, `"to"` are discarded).
+- **Randomly samples** 1000 words from the filtered list using `random.sample()`.
+- **Sorts** the 1000 words alphabetically.
+
+> *Example*: From 80,000+ words in the dictionary, 1000 are selected, e.g., `['abandon', 'ability', 'above', ...]`.
+
+---
+
+### Step 3 — Build the N-Gram Dictionary
+```python
+word_ngram_dictionary = build_ngram_dictionary(sorted_sampled_words)
+```
+For every sampled word, generates all character-level n-grams of sizes `NGRAM_SIZES = [3, 4, 5]` by calling `multi_grams_of(word)`, which in turn calls `ngram_of(word, size)` for each size. The result is a dictionary mapping each word to its list of n-grams.
+
+> *Example for* `"blue"`:
+> - 3-grams → `['blu', 'lue']`
+> - 4-grams → `['blue']`
+> - 5-grams → `[]` *(word is too short)*
+> - Combined → `['blu', 'lue', 'blue']`
+
+```python
+{ 'blue': ['blu', 'lue', 'blue'], 'bluebell': ['blu', 'lue', 'ueb', 'ebe', 'bel', 'ell', 'blue', 'lueb', ...], ... }
+```
+
+---
+
+### Step 4 — Build N-Gram Frequencies
+```python
+ngram_frequencies = build_ngram_frequencies(word_ngram_dictionary)
+```
+Iterates over every n-gram from every word and counts how many times each unique n-gram appears across the entire sampled dictionary. This creates the global n-gram frequency table.
+
+> *Example*: If `'ing'` appears in 200 of the 1000 words, then `ngram_frequencies['ing'] = 200`.
+
+```python
+{ 'blu': 3, 'lue': 5, 'blue': 3, 'ing': 200, 'tion': 150, ... }
+```
+
+---
+
+### Step 5 — Calculate Vector Dimensions
+```python
+dimension = len(ngram_frequencies.keys())
+```
+The total number of unique n-grams across all sampled words defines the **dimensionality** of the vector space. Every word will be represented as a vector of this length.
+
+> *Example*: If there are 4500 unique n-grams, every word vector has 4500 dimensions.
+
+---
+
+### Step 6 — Sort N-Gram Positions
+```python
+ngram_positions = list(ngram_frequencies.keys())
+ngram_positions.sort()
+```
+Extracts all unique n-grams and sorts them alphabetically. This sorted list determines the **fixed ordering** of dimensions in every word vector, ensuring consistency.
+
+> *Example (partial)*: `['abl', 'abla', 'ablan', 'able', 'ably', 'blu', 'blue', ...]`
+
+---
+
+### Step 7 — Build the Position Dictionary
+```python
+position_dictionary = build_position_dictionary(ngram_positions)
+```
+Maps each unique n-gram to a fixed integer index (its position in the vector). This lookup table is used during vectorization to know which index of the vector a given n-gram corresponds to.
+
+> *Example*:
+> ```python
+> { 'abl': 0, 'abla': 1, 'ablan': 2, 'able': 3, ..., 'blu': 45, 'blue': 46, ... }
+> ```
+
+---
+
+### Step 8 — Build All Word Vectors
+```python
+ngram_vectors = build_word_vectors(word_ngram_dictionary, position_dictionary, ngram_frequencies)
+```
+For each word in the dictionary, calls `vector_of()` → `ngram_vectorizer()`. The vectorizer creates a zero-filled array of `dimension` length, then for each n-gram the word contains it places the **global n-gram frequency** at the corresponding index position.
+
+> *Example for* `"blue"` *(simplified, dimension = 4500)*:
+> ```
+> Index:  0    1    2    3   ...   45   46   ...  4499
+> Value: [0,   0,   0,   0,  ...,   3,   3,  ...,   0]
+>                                  ^^^  ^^^
+>                                 'blu' 'blue'
+>                           (frequency = 3 each)
+> ```
+
+---
+
+### Step 9 — Read the Input Word and Vectorize It
+```python
+input_word = input("\nGive a word : ")
+input_vector = vector_of(input_word, word_ngram_dictionary, position_dictionary, ngram_frequencies)
+```
+Prompts the user for a word. The input word is converted into a vector using the **same** position dictionary and n-gram frequencies. If the word is already in the dictionary, its pre-built n-grams are reused; otherwise, n-grams are generated on the fly.
+
+> *Example*: User types `"bluet"`.
+> - N-grams: `['blu', 'lue', 'uet', 'blue', 'luet', 'bluet', 'lueto', ...]`
+> - Vectorized against the same 4500-dimension space.
+
+---
+
+### Step 10 — Calculate Cosine Similarity with All Dictionary Vectors
+```python
+angles_with_input = calculate_angles_with(input_vector, ngram_vectors)
+```
+Iterates over every word in `ngram_vectors` and calls `cos_theta_of(v, w)`, which computes:
+
+$$\cos(\theta) = \frac{v \cdot w}{\|v\| \cdot \|w\|}$$
+
+using `dot_product_of()` and `magnitude_of()` implemented from scratch. The result is a dictionary of `{ word: similarity_score }` for all 1000 words.
+
+> *Example (partial)*:
+> ```python
+> { 'blue': 0.93, 'bluebell': 0.81, 'bluet': 1.0, 'blur': 0.45, 'abandon': 0.0, ... }
+> ```
+
+---
+
+### Step 11 — Rank Words by Similarity Score
+```python
+ranked_words = ranked_words_of(angles_with_input)
+```
+Sorts all words by their cosine similarity score in **descending order** using Python's `sorted()`. Selects the **top `SUGGESTION_SIZE = 10`** results.
+
+> *Example (top 5)*:
+> ```python
+> { 'bluet': 1.0, 'blue': 0.93, 'bluebell': 0.81, 'bluets': 0.79, 'blur': 0.45 }
+> ```
+
+---
+
+### Step 12 — Filter Zero-Scored Words and Print Results
+```python
+final_suggestions = filter_zero_scored_words(ranked_words)
+```
+Removes any words with a similarity score of `0.0` (no shared n-grams at all). The remaining words are printed as the final suggestions.
+
+> *Example output for input* `"bluet"`:
+> ```text
+> Give a word : bluet
+>
+> Final Suggestions :
+>     >> bluet:          1.0
+>     >> blue:           0.93
+>     >> bluebell:       0.81
+>     >> bluets:         0.79
+>     >> blur:           0.45
+> ```
+
+---
 
 ## Workflow Diagram
 
