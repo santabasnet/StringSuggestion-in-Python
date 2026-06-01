@@ -68,7 +68,9 @@ The core algorithm operates on the principle of representing words as numerical 
 
 Given two word vectors $v$ and $w$:
 
-$$ \text{Cosine Similarity}(v, w) = \cos(\theta) = \frac{v \cdot w}{\|v\| \|w\|} $$
+```math
+\text{Cosine Similarity}(v, w) = \cos(\theta) = \frac{v \cdot w}{\|v\| \|w\|}
+```
 
 Where:
 *   $v \cdot w$ is the dot product of the vectors: $\sum_{i=1}^{n} v_i w_i$
@@ -113,7 +115,9 @@ Currently, the implementation is a foundational demonstration of N-grams and Cos
 1.  **Text Normalization (Case Folding)**: The system currently treats uppercase and lowercase characters differently (e.g., "Apple" and "apple" produce completely different N-grams). Normalizing all dictionary words and user inputs to lowercase (`word.lower()`) would solve case-sensitivity mismatches.
 2.  **TF-IDF Weighting**: Currently, the system uses raw N-gram frequencies. Implementing Term Frequency-Inverse Document Frequency (TF-IDF) would decrease the weight of overly common N-grams and highlight unique, distinguishing N-grams for better accuracy. The weighting can be calculated as:
     
-    $$ \text{TF-IDF}(t, d, D) = \text{TF}(t, d) \cdot \log\left(\frac{N}{\text{DF}(t)}\right) $$
+    ```math
+    \text{TF-IDF}(t, d, D) = \text{TF}(t, d) \cdot \log\left(\frac{N}{\text{DF}(t)}\right)
+    ```
     
     Where $t$ is the N-gram, $d$ is the specific word, $N$ is the total number of words in the dictionary corpus, and $\text{DF}(t)$ is the number of words containing the N-gram $t$.
 3.  **Special Character Filtering**: Stripping out punctuation, numbers, or special characters to ensure the algorithm only compares alphabetical characters.
@@ -125,26 +129,30 @@ While Cosine Similarity works well for measuring the angular distance between fr
 
 1.  **Jaccard Similarity**: Instead of looking at frequencies, Jaccard similarity measures the size of the intersection divided by the size of the union of two sets of n-grams. It's excellent for cases where simply the *presence* or *absence* of n-grams matters more than their frequency count.
     
-    $$ J(A, B) = \frac{|A \cap B|}{|A \cup B|} = \frac{|A \cap B|}{|A| + |B| - |A \cap B|} $$
+    ```math
+    J(A, B) = \frac{|A \cap B|}{|A \cup B|} = \frac{|A \cap B|}{|A| + |B| - |A \cap B|}
+    ```
     
     Where $A$ and $B$ are the sets of n-grams for the input word and dictionary word, respectively.
 
 2.  **Euclidean Distance**: Measures the straight-line distance between two points in vector space. While less robust for varying length strings compared to Cosine Similarity, it can be useful when magnitude is as important as the angle.
     
-    $$ d(v, w) = \sqrt{\sum_{i=1}^{n} (v_i - w_i)^2} $$
+    ```math
+    d(v, w) = \sqrt{\sum_{i=1}^{n} (v_i - w_i)^2}
+    ```
 
 3.  **Levenshtein Distance (Edit Distance)**: Rather than using vector representations, this metric calculates the minimum number of single-character edits (insertions, deletions, or substitutions) required to change one word into the other. It is the gold standard for many traditional spell-checkers.
     
     The distance is typically calculated using a Dynamic Programming algorithm. It constructs a matrix $D$ where $D[i,j]$ represents the edit distance between the first $i$ characters of word $A$ and the first $j$ characters of word $B$:
 
-    $$
+    ```math
     D[i,j] = \begin{cases} 
       i & \text{if } j = 0 \\
       j & \text{if } i = 0 \\
       D[i-1, j-1] & \text{if } A[i] = B[j] \\
       1 + \min \left( D[i-1, j], D[i, j-1], D[i-1, j-1] \right) & \text{otherwise}
     \end{cases}
-    $$
+    ```
 ### Vector Storage & Database Integration
 
 Currently, the vector space and all dictionary word vectors are computed in-memory every time the script runs. For a production environment with a massive dictionary, this approach is not scalable. 
