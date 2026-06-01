@@ -113,9 +113,9 @@ Currently, the implementation is a foundational demonstration of N-grams and Cos
 1.  **Text Normalization (Case Folding)**: The system currently treats uppercase and lowercase characters differently (e.g., "Apple" and "apple" produce completely different N-grams). Normalizing all dictionary words and user inputs to lowercase (`word.lower()`) would solve case-sensitivity mismatches.
 2.  **TF-IDF Weighting**: Currently, the system uses raw N-gram frequencies. Implementing Term Frequency-Inverse Document Frequency (TF-IDF) would decrease the weight of overly common N-grams and highlight unique, distinguishing N-grams for better accuracy. The weighting can be calculated as:
     
-    $$ \text{TF-IDF}(t, d, D) = \text{TF}(t, d) \cdot \log\left(\frac{|D|}{|\{d \in D : t \in d\}|}\right) $$
+    $$ \text{TF-IDF}(t, d, D) = \text{TF}(t, d) \cdot \log\left(\frac{N}{\text{DF}(t)}\right) $$
     
-    Where $t$ is the N-gram, $d$ is the specific word, and $D$ is the entire dictionary corpus.
+    Where $t$ is the N-gram, $d$ is the specific word, $N$ is the total number of words in the dictionary corpus, and $\text{DF}(t)$ is the number of words containing the N-gram $t$.
 3.  **Special Character Filtering**: Stripping out punctuation, numbers, or special characters to ensure the algorithm only compares alphabetical characters.
 4.  **Optimized Vector Operations**: The vector dimensions map to all unique N-grams across the dataset, creating sparse arrays. Using sparse matrix libraries (like SciPy) or NumPy could greatly improve performance for larger dictionaries.
 
